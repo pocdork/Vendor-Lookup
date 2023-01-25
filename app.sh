@@ -21,16 +21,29 @@ function CVEDetails(){
     tee -a "$base_dir/tmp/CVE_$date"
 
 }
+function BleepingComputer(){
+    curl --silent "https://www.bleepingcomputer.com/feed/" | xmlstarlet sel -t -m '/rss/channel/item' -v 'title' -n -v 'link' -n |  awk '{
+        title=$0
+        gsub(/"/, "&&", title)
+        getline
+        printf "\"%s\",\"%s\"\n", title, $0
+    }'| tee -a "$base_dir/tmp/BC_$date"
+}
 
 function VendorCheck(){
     while read vendors
     do
+        #HackerNews
         cat "$base_dir/tmp/HN_$date" | grep -i "$vendors" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"|"/g;' | tee -a "$base_dir/res/HN_$date"
+        #CVEDetails
         cat "$base_dir/tmp/CVE_$date" | grep -i "$vendors" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"|"/g;' | tee -a "$base_dir/res/CVE_$date"
+        #BleepingComputer
+        cat "$base_dir/tmp/BC_$date" | grep -i "$vendors" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"|"/g;' | tee -a "$base_dir/res/BC_$date"
     done < "$base_dir/src/vendor_list" 
 }
 
 function Notification(){
+    #HackerNews
     while IFS="|" read -r title url
     do
         T=$(echo ${title}|tr -d '"')
@@ -38,7 +51,7 @@ function Notification(){
         curl -X POST -H 'Content-type: application/json' --data '{"text":"'"$T"'\n'"$U"'"}' "$hook_url"
     done < "$base_dir/res/HN_$date"
 
-
+    #CVEDetails
     while IFS="|" read -r cve_id  title url
     do
         I=$(echo ${cve_id}|tr -d '"')
@@ -47,16 +60,27 @@ function Notification(){
         curl -X POST -H 'Content-type: application/json' --data '{"text":"'"$I"'\n'"$T"'\n'"$U"'"}' "$hook_url"
     done < "$base_dir/res/CVE_$date"
 
+    #BleepingComputer
+    while IFS="|" read -r title url
+    do
+        T=$(echo ${title}|tr -d '"')
+        U=$(echo ${url}|tr -d '"')
+        curl -X POST -H 'Content-type: application/json' --data '{"text":"'"$T"'\n'"$U"'"}' "$hook_url"
+    done < "$base_dir/res/BC_$date"
+
 }
 function DeleteFiles(){
     rm "$base_dir/tmp/HN_$date"
     rm "$base_dir/res/HN_$date"
     rm "$base_dir/tmp/CVE_$date"
     rm "$base_dir/res/CVE_$date"
+    rm "$base_dir/tmp/BC_$date"
+    rm "$base_dir/res/BC_$date"
 }
 
 TheHackersNews
 CVEDetails
+BleepingComputer
 VendorCheck
 Notification
 DeleteFiles
