@@ -3,6 +3,7 @@
 date=$(date +"%d-%m-%Y")
 base_dir="/root/Vendor-Lookup"
 hook_url=$(sed -n 1p $base_dir/src/.hook_url)
+mkdir -p "$base_dir/res/"
 
 function TheHackersNews(){
     curl --silent "https://feeds.feedburner.com/TheHackersNews" |  xmlstarlet sel -t -m '/rss/channel/item' -v 'title' -n -v 'link' -n |  awk '{
