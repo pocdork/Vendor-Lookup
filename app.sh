@@ -11,13 +11,22 @@ function TheHackersNews(){
         gsub(/"/, "&&", title)
         getline
         printf "\"%s\",\"%s\"\n", title, $0
-    }'| tee -a "$base_dir/tmp/$date"
+    }'| tee -a "$base_dir/tmp/HN_$date"
+}
+
+function CVEDetails(){
+    # echo "cve_id |,| title |,| url" | tee -a "$base_dir/res/CVE_$date"
+    curl "https://www.cvedetails.com/json-feed.php?numrows=30&vendor_id=0&product_id=0&version_id=0&hasexp=0&opec=0&opov=0&opcsrf=0&opfileinc=0&opgpriv=0&opsqli=0&opxss=0&opdirt=0&opmemc=0&ophttprs=0&opbyp=0&opginf=0&opdos=0&orderby=1&cvssscoremin=0" | 
+    jq -r '["cve_id", "title", "url"], (.[] | [.cve_id, .summary, .url]) | @csv'| 
+    tee -a "$base_dir/tmp/CVE_$date"
+
 }
 
 function VendorCheck(){
     while read vendors
     do
-        cat "$base_dir/tmp/$date" | grep -i "$vendors" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"|"/g;' | tee -a "$base_dir/res/$date"
+        cat "$base_dir/tmp/HN_$date" | grep -i "$vendors" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"|"/g;' | tee -a "$base_dir/res/HN_$date"
+        cat "$base_dir/tmp/CVE_$date" | grep -i "$vendors" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"|"/g;' | tee -a "$base_dir/res/CVE_$date"
     done < "$base_dir/src/vendor_list" 
 }
 
@@ -27,15 +36,27 @@ function Notification(){
         T=$(echo ${title}|tr -d '"')
         U=$(echo ${url}|tr -d '"')
         curl -X POST -H 'Content-type: application/json' --data '{"text":"'"$T"'\n'"$U"'"}' "$hook_url"
-    done < "$base_dir/res/$date"
+    done < "$base_dir/res/HN_$date"
+
+
+    while IFS="|" read -r cve_id  title url
+    do
+        I=$(echo ${cve_id}|tr -d '"')
+        T=$(echo ${title}|tr -d '"')
+        U=$(echo ${url}|tr -d '"')
+        curl -X POST -H 'Content-type: application/json' --data '{"text":"'"$I"'\n'"$T"'\n'"$U"'"}' "$hook_url"
+    done < "$base_dir/res/CVE_$date"
 
 }
 function DeleteFiles(){
-    rm "$base_dir/tmp/$date"
-    rm "$base_dir/res/$date"
+    rm "$base_dir/tmp/HN_$date"
+    rm "$base_dir/res/HN_$date"
+    rm "$base_dir/tmp/CVE_$date"
+    rm "$base_dir/res/CVE_$date"
 }
 
 TheHackersNews
+CVEDetails
 VendorCheck
 Notification
 DeleteFiles
