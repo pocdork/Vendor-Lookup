@@ -30,6 +30,15 @@ function BleepingComputer(){
     }'| tee -a "$base_dir/tmp/BC_$date"
 }
 
+function NakedSecurity(){
+        curl --silent "https://nakedsecurity.sophos.com/feed/"|xmlstarlet sel -t -m '/rss/channel/item' -v 'title' -n -v 'link' -n |  awk '{
+        title=$0
+        gsub(/"/, "&&", title)
+        getline
+        printf "\"%s\",\"%s\"\n", title, $0
+    }'| tee -a "$base_dir/tmp/NS_$date"
+}
+
 function VendorCheck(){
     while read vendors
     do
@@ -39,6 +48,8 @@ function VendorCheck(){
         cat "$base_dir/tmp/CVE_$date" | grep -i "$vendors" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"|"/g;' | tee -a "$base_dir/res/CVE_$date"
         #BleepingComputer
         cat "$base_dir/tmp/BC_$date" | grep -i "$vendors" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"|"/g;' | tee -a "$base_dir/res/BC_$date"
+        #NakedSecurity
+        cat "$base_dir/tmp/NS_$date" | grep -i "$vendors" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"|"/g;' | tee -a "$base_dir/res/NS_$date"
     done < "$base_dir/src/vendor_list" 
 }
 
@@ -68,7 +79,15 @@ function Notification(){
         curl -X POST -H 'Content-type: application/json' --data '{"text":"'"$T"'\n'"$U"'"}' "$hook_url"
     done < "$base_dir/res/BC_$date"
 
-}
+    #NakedSecurity
+    while IFS="|" read -r title url
+    do
+        T=$(echo ${title}|tr -d '"')
+        U=$(echo ${url}|tr -d '"')
+        curl -X POST -H 'Content-type: application/json' --data '{"text":"'"$T"'\n'"$U"'"}' "$hook_url"
+    done < "$base_dir/res/NS_$date"
+    }
+
 function DeleteFiles(){
     rm "$base_dir/tmp/HN_$date"
     rm "$base_dir/res/HN_$date"
@@ -76,11 +95,14 @@ function DeleteFiles(){
     rm "$base_dir/res/CVE_$date"
     rm "$base_dir/tmp/BC_$date"
     rm "$base_dir/res/BC_$date"
+    rm "$base_dir/tmp/NS_$date"
+    rm "$base_dir/res/NS_$date"
 }
 
 TheHackersNews
 CVEDetails
 BleepingComputer
+NakedSecurity
 VendorCheck
 Notification
 DeleteFiles
