@@ -39,6 +39,15 @@ function NakedSecurity(){
     }'| tee -a "$base_dir/tmp/NS_$date"
 }
 
+function Portswigger(){
+    curl --silent "https://portswigger.net/daily-swig/rss"|xmlstarlet sel -t -m '/rss/channel/item' -v 'title' -n -v 'link' -n |  awk '{
+        title=$0
+        gsub(/"/, "&&", title)
+        getline
+        printf "\"%s\",\"%s\"\n", title, $0
+    }'| tee -a "$base_dir/tmp/PS_$date"
+}
+
 function VendorCheck(){
     while read vendors
     do
@@ -50,6 +59,8 @@ function VendorCheck(){
         cat "$base_dir/tmp/BC_$date" | grep -i "$vendors" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"|"/g;' | tee -a "$base_dir/res/BC_$date"
         #NakedSecurity
         cat "$base_dir/tmp/NS_$date" | grep -i "$vendors" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"|"/g;' | tee -a "$base_dir/res/NS_$date"
+        #Portswigger
+        cat "$base_dir/tmp/PS_$date" | grep -i "$vendors" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"|"/g;' | tee -a "$base_dir/res/PS_$date"
     done < "$base_dir/src/vendor_list" 
 }
 
@@ -86,6 +97,15 @@ function Notification(){
         U=$(echo ${url}|tr -d '"')
         curl -X POST -H 'Content-type: application/json' --data '{"text":"'"$T"'\n'"$U"'"}' "$hook_url"
     done < "$base_dir/res/NS_$date"
+    
+
+    #Portswigger
+    while IFS="|" read -r title url
+    do
+        T=$(echo ${title}|tr -d '"')
+        U=$(echo ${url}|tr -d '"')
+        curl -X POST -H 'Content-type: application/json' --data '{"text":"'"$T"'\n'"$U"'"}' "$hook_url"
+    done < "$base_dir/res/PS_$date"
     }
 
 function DeleteFiles(){
@@ -97,12 +117,15 @@ function DeleteFiles(){
     rm "$base_dir/res/BC_$date"
     rm "$base_dir/tmp/NS_$date"
     rm "$base_dir/res/NS_$date"
+    rm "$base_dir/tmp/PS_$date"
+    rm "$base_dir/res/PS_$date"
 }
 
 TheHackersNews
 CVEDetails
 BleepingComputer
 NakedSecurity
+Portswigger
 VendorCheck
 Notification
 DeleteFiles
