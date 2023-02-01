@@ -52,15 +52,15 @@ function VendorCheck(){
     while read vendors
     do
         #HackerNews
-        cat "$base_dir/tmp/HN_$date" | grep -i "$vendors" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"|"/g;' | tee -a "$base_dir/res/HN_$date"
+        cat "$base_dir/tmp/HN_$date" | grep -i -w "$vendors" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"|"/g;' | tee -a "$base_dir/res/HN_$date"
         #CVEDetails
-        cat "$base_dir/tmp/CVE_$date" | grep -i "$vendors" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"|"/g;' | tee -a "$base_dir/res/CVE_$date"
+        cat "$base_dir/tmp/CVE_$date" | grep -i -w "$vendors" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"|"/g;' | tee -a "$base_dir/res/CVE_$date"
         #BleepingComputer
-        cat "$base_dir/tmp/BC_$date" | grep -i "$vendors" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"|"/g;' | tee -a "$base_dir/res/BC_$date"
+        cat "$base_dir/tmp/BC_$date" | grep -i -w "$vendors" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"|"/g;' | tee -a "$base_dir/res/BC_$date"
         #NakedSecurity
-        cat "$base_dir/tmp/NS_$date" | grep -i "$vendors" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"|"/g;' | tee -a "$base_dir/res/NS_$date"
+        cat "$base_dir/tmp/NS_$date" | grep -i -w "$vendors" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"|"/g;' | tee -a "$base_dir/res/NS_$date"
         #Portswigger
-        cat "$base_dir/tmp/PS_$date" | grep -i "$vendors" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"|"/g;' | tee -a "$base_dir/res/PS_$date"
+        cat "$base_dir/tmp/PS_$date" | grep -i -w "$vendors" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"|"/g;' | tee -a "$base_dir/res/PS_$date"
     done < "$base_dir/src/vendor_list" 
 }
 
