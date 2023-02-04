@@ -4,6 +4,7 @@ date=$(date +"%d-%m-%Y")
 base_dir="/root/Vendor-Lookup"
 hook_url=$(sed -n 1p $base_dir/src/.hook_url)
 mkdir -p "$base_dir/res/"
+mkdir -p "$base_dir/tmp/"
 
 function TheHackersNews(){
     curl --silent "https://feeds.feedburner.com/TheHackersNews" |  xmlstarlet sel -t -m '/rss/channel/item' -v 'title' -n -v 'link' -n |  awk '{
@@ -49,18 +50,31 @@ function Portswigger(){
 }
 
 function VendorCheck(){
+    cat "$base_dir/tmp/HN_$date" "$base_dir/tmp/BC_$date" "$base_dir/tmp/NS_$date" "$base_dir/tmp/PS_$date" > "$base_dir/tmp/news_$date"
     while read vendors
     do
-        #HackerNews
-        cat "$base_dir/tmp/HN_$date" | grep -i -w "$vendors" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"|"/g;' | tee -a "$base_dir/res/HN_$date"
-        #CVEDetails
-        cat "$base_dir/tmp/CVE_$date" | grep -i -w "$vendors" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"|"/g;' | tee -a "$base_dir/res/CVE_$date"
-        #BleepingComputer
-        cat "$base_dir/tmp/BC_$date" | grep -i -w "$vendors" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"|"/g;' | tee -a "$base_dir/res/BC_$date"
-        #NakedSecurity
-        cat "$base_dir/tmp/NS_$date" | grep -i -w "$vendors" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"|"/g;' | tee -a "$base_dir/res/NS_$date"
-        #Portswigger
-        cat "$base_dir/tmp/PS_$date" | grep -i -w "$vendors" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"|"/g;' | tee -a "$base_dir/res/PS_$date"
+        chk=$(cat "$base_dir/tmp/news_$date" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"-->"/g;'| awk -F "\"*-->\"*" '{print $1}' | grep -i -w "$vendors")
+        if [ "$chk" ]
+        then
+
+            cat "$base_dir/tmp/news_$date" | grep "$chk" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"|"/g;' | tee -a "$base_dir/res/news_$date"
+        else
+            echo "--"
+        fi      
+             
+    done < "$base_dir/src/vendor_list" 
+    
+    #For CVE Check:
+    while read vendors
+    do
+        chk1=$(cat "$base_dir/tmp/CVE_$date" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"-->"/g;'| awk -F "\"*-->\"*" '{print $2}' | grep -i -w "$vendors")
+        if [ "$chk1" ]
+        then
+
+            cat "$base_dir/tmp/CVE_$date" | grep "$chk1" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"|"/g;' | tee -a "$base_dir/res/CVE_$date"
+        else
+            echo "--"
+        fi
     done < "$base_dir/src/vendor_list" 
 }
 
@@ -71,7 +85,7 @@ function Notification(){
         T=$(echo ${title}|tr -d '"')
         U=$(echo ${url}|tr -d '"')
         curl -X POST -H 'Content-type: application/json' --data '{"text":"'"$T"'\n'"$U"'"}' "$hook_url"
-    done < "$base_dir/res/HN_$date"
+    done < "$base_dir/res/news_$date"
 
     #CVEDetails
     while IFS="|" read -r cve_id  title url
@@ -82,30 +96,6 @@ function Notification(){
         curl -X POST -H 'Content-type: application/json' --data '{"text":"'"$I"'\n'"$T"'\n'"$U"'"}' "$hook_url"
     done < "$base_dir/res/CVE_$date"
 
-    #BleepingComputer
-    while IFS="|" read -r title url
-    do
-        T=$(echo ${title}|tr -d '"')
-        U=$(echo ${url}|tr -d '"')
-        curl -X POST -H 'Content-type: application/json' --data '{"text":"'"$T"'\n'"$U"'"}' "$hook_url"
-    done < "$base_dir/res/BC_$date"
-
-    #NakedSecurity
-    while IFS="|" read -r title url
-    do
-        T=$(echo ${title}|tr -d '"')
-        U=$(echo ${url}|tr -d '"')
-        curl -X POST -H 'Content-type: application/json' --data '{"text":"'"$T"'\n'"$U"'"}' "$hook_url"
-    done < "$base_dir/res/NS_$date"
-    
-
-    #Portswigger
-    while IFS="|" read -r title url
-    do
-        T=$(echo ${title}|tr -d '"')
-        U=$(echo ${url}|tr -d '"')
-        curl -X POST -H 'Content-type: application/json' --data '{"text":"'"$T"'\n'"$U"'"}' "$hook_url"
-    done < "$base_dir/res/PS_$date"
     }
 
 function DeleteFiles(){
