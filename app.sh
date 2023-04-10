@@ -59,7 +59,7 @@ function Notification(){
     do
         T=$(echo ${title}|tr -d '"')
         U=$(echo ${url}|tr -d '"')
-        curl -X POST -H 'Content-type: application/json' --data '{"text":"'"$T"'\n'"$U"'"}' "$hook_url"
+        curl -X POST -H 'Content-type: application/json' --data '{"text":"'*"$T"*'\n'"$U"'"}' "$hook_url"
     done < "$base_dir/res/HN_$date"
 
     #CVEDetails
@@ -68,7 +68,7 @@ function Notification(){
         I=$(echo ${cve_id}|tr -d '"')
         T=$(echo ${title}|tr -d '"')
         U=$(echo ${url}|tr -d '"')
-        curl -X POST -H 'Content-type: application/json' --data '{"text":"'"$I"'\n'"$T"'\n'"$U"'"}' "$hook_url"
+        curl -X POST -H 'Content-type: application/json' --data '{"text":"'*"$I"*'\n'*"$T"*'\n'"$U"'"}' "$hook_url"
     done < "$base_dir/res/CVE_$date"
 
     #BleepingComputer
@@ -76,7 +76,7 @@ function Notification(){
     do
         T=$(echo ${title}|tr -d '"')
         U=$(echo ${url}|tr -d '"')
-        curl -X POST -H 'Content-type: application/json' --data '{"text":"'"$T"'\n'"$U"'"}' "$hook_url"
+        curl -X POST -H 'Content-type: application/json' --data '{"text":"'*"$T"*'\n'"$U"'"}' "$hook_url"
     done < "$base_dir/res/BC_$date"
 
     #NakedSecurity
@@ -84,7 +84,7 @@ function Notification(){
     do
         T=$(echo ${title}|tr -d '"')
         U=$(echo ${url}|tr -d '"')
-        curl -X POST -H 'Content-type: application/json' --data '{"text":"'"$T"'\n'"$U"'"}' "$hook_url"
+        curl -X POST -H 'Content-type: application/json' --data '{"text":"'*"$T"*'\n'"$U"'"}' "$hook_url"
     done < "$base_dir/res/NS_$date"
     }
 
