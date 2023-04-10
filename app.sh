@@ -4,6 +4,7 @@ date=$(date +"%d-%m-%Y")
 base_dir="/root/Vendor-Lookup"
 hook_url=$(sed -n 1p $base_dir/src/.hook_url)
 mkdir -p "$base_dir/res/"
+mkdir -p "$base_dir/tmp/"
 
 function TheHackersNews(){
     curl --silent "https://feeds.feedburner.com/TheHackersNews" |  xmlstarlet sel -t -m '/rss/channel/item' -v 'title' -n -v 'link' -n |  awk '{
@@ -18,7 +19,7 @@ function CVEDetails(){
     # echo "cve_id |,| title |,| url" | tee -a "$base_dir/res/CVE_$date"
     curl "https://www.cvedetails.com/json-feed.php?numrows=30&vendor_id=0&product_id=0&version_id=0&hasexp=0&opec=0&opov=0&opcsrf=0&opfileinc=0&opgpriv=0&opsqli=0&opxss=0&opdirt=0&opmemc=0&ophttprs=0&opbyp=0&opginf=0&opdos=0&orderby=1&cvssscoremin=0" | 
     jq -r '["cve_id", "title", "url"], (.[] | [.cve_id, .summary, .url]) | @csv'| 
-    tee -a "$base_dir/tmp/CVE_$date"
+    tee -a "$base_dir/tmp/new_CVE_$date"
 
 }
 function BleepingComputer(){
@@ -39,17 +40,45 @@ function NakedSecurity(){
     }'| tee -a "$base_dir/tmp/NS_$date"
 }
 
+function Portswigger(){
+    curl --silent "https://portswigger.net/daily-swig/rss"|xmlstarlet sel -t -m '/rss/channel/item' -v 'title' -n -v 'link' -n |  awk '{
+        title=$0
+        gsub(/"/, "&&", title)
+        getline
+        printf "\"%s\",\"%s\"\n", title, $0
+    }'| tee -a "$base_dir/tmp/PS_$date"
+}
+
 function VendorCheck(){
+    cat "$base_dir/tmp/HN_$date" "$base_dir/tmp/BC_$date" "$base_dir/tmp/NS_$date" "$base_dir/tmp/PS_$date" > "$base_dir/tmp/new_news_$date"
+    cat "$base_dir/tmp/new_news_$date" | anew "$base_dir/tmp/news_$date" > "$base_dir/tmp/post_news_$date"
+
     while read vendors
     do
-        #HackerNews
-        cat "$base_dir/tmp/HN_$date" | grep -i "$vendors" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"|"/g;' | tee -a "$base_dir/res/HN_$date"
-        #CVEDetails
-        cat "$base_dir/tmp/CVE_$date" | grep -i "$vendors" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"|"/g;' | tee -a "$base_dir/res/CVE_$date"
-        #BleepingComputer
-        cat "$base_dir/tmp/BC_$date" | grep -i "$vendors" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"|"/g;' | tee -a "$base_dir/res/BC_$date"
-        #NakedSecurity
-        cat "$base_dir/tmp/NS_$date" | grep -i "$vendors" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"|"/g;' | tee -a "$base_dir/res/NS_$date"
+        chk=$(cat "$base_dir/tmp/post_news_$date" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"-->"/g;'| awk -F "\"*-->\"*" '{print $1}' | grep -i -w "$vendors")
+        if [ "$chk" ]
+        then
+
+            cat "$base_dir/tmp/post_news_$date" | grep "$chk" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"|"/g;' | tee -a "$base_dir/res/post_news_$date"
+            echo "---------------------$chk"
+        else
+            echo "--"
+        fi      
+             
+    done < "$base_dir/src/vendor_list" 
+    
+    #For CVE Check:
+    cat "$base_dir/tmp/new_CVE_$date" | anew "$base_dir/tmp/CVE_$date" > "$base_dir/tmp/post_CVE_$date"
+    while read vendors
+    do
+        chk1=$(cat "$base_dir/tmp/post_CVE_$date" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"-->"/g;'| awk -F "\"*-->\"*" '{print $2}' | grep -i -w "$vendors")
+        if [ "$chk1" ]
+        then
+
+            cat "$base_dir/tmp/post_CVE_$date" | grep "$chk1" | sed -r ':a;s/(("[0-9,]*",?)*"[0-9,]*),/\1/;ta; s/""/"|"/g;' | tee -a "$base_dir/res/post_CVE_$date"
+        else
+            echo "--"
+        fi
     done < "$base_dir/src/vendor_list" 
 }
 
@@ -59,8 +88,13 @@ function Notification(){
     do
         T=$(echo ${title}|tr -d '"')
         U=$(echo ${url}|tr -d '"')
+<<<<<<< HEAD
         curl -X POST -H 'Content-type: application/json' --data '{"text":"'*"$T"*'\n'"$U"'"}' "$hook_url"
     done < "$base_dir/res/HN_$date"
+=======
+        curl -X POST -H 'Content-type: application/json' --data '{"text":"'"$T"'\n'"$U"'"}' "$hook_url"
+    done < "$base_dir/res/post_news_$date"
+>>>>>>> fea547ac6e6210f7df56f08fc5a33c938e6b0f76
 
     #CVEDetails
     while IFS="|" read -r cve_id  title url
@@ -68,6 +102,7 @@ function Notification(){
         I=$(echo ${cve_id}|tr -d '"')
         T=$(echo ${title}|tr -d '"')
         U=$(echo ${url}|tr -d '"')
+<<<<<<< HEAD
         curl -X POST -H 'Content-type: application/json' --data '{"text":"'*"$I"*'\n'*"$T"*'\n'"$U"'"}' "$hook_url"
     done < "$base_dir/res/CVE_$date"
 
@@ -86,23 +121,37 @@ function Notification(){
         U=$(echo ${url}|tr -d '"')
         curl -X POST -H 'Content-type: application/json' --data '{"text":"'*"$T"*'\n'"$U"'"}' "$hook_url"
     done < "$base_dir/res/NS_$date"
+=======
+        curl -X POST -H 'Content-type: application/json' --data '{"text":"'"$I"'\n'"$T"'\n'"$U"'"}' "$hook_url"
+    done < "$base_dir/res/post_CVE_$date"
+
+>>>>>>> fea547ac6e6210f7df56f08fc5a33c938e6b0f76
     }
 
 function DeleteFiles(){
     rm "$base_dir/tmp/HN_$date"
     rm "$base_dir/res/HN_$date"
-    rm "$base_dir/tmp/CVE_$date"
     rm "$base_dir/res/CVE_$date"
     rm "$base_dir/tmp/BC_$date"
     rm "$base_dir/res/BC_$date"
     rm "$base_dir/tmp/NS_$date"
     rm "$base_dir/res/NS_$date"
+    rm "$base_dir/tmp/PS_$date"
+    rm "$base_dir/res/PS_$date"
+    rm "$base_dir/tmp/new_news_$date"
+    rm "$base_dir/tmp/post_news_$date"
+    rm "$base_dir/res/post_news_$date"
+    rm "$base_dir/tmp/new_CVE_$date"
+    rm "$base_dir/tmp/post_CVE_$date"
+    rm "$base_dir/res/post_CVE_$date"
 }
 
 TheHackersNews
 CVEDetails
 BleepingComputer
 NakedSecurity
+Portswigger
 VendorCheck
 Notification
 DeleteFiles
+
